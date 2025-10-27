@@ -7,4 +7,5 @@ import java.util.*
 @Repository
 interface FoodTranslationRepository : JpaRepository<FoodTranslation, UUID> {
     fun findFirstByFoodId(foodId: UUID): FoodTranslation?
+    fun findByFoodId(foodId: UUID): List<FoodTranslation>
 }
