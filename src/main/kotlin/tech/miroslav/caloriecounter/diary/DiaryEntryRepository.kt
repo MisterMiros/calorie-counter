@@ -8,4 +8,6 @@ import java.util.*
 interface DiaryEntryRepository : JpaRepository<DiaryEntry, UUID> {
     fun deleteByDiaryId(diaryId: UUID)
     fun countByDiaryId(diaryId: UUID): Long
+    fun findByDiaryIdOrderByCreatedAtAsc(diaryId: UUID): List<DiaryEntry>
+    fun findByIdAndDiaryId(id: UUID, diaryId: UUID): DiaryEntry?
 }
