@@ -1,0 +1,35 @@
+﻿version: '3.9'
+services:
+  db:
+    image: postgres:16
+    container_name: calorie_counter_db
+    environment:
+      POSTGRES_DB: calorie_counter
+      POSTGRES_USER: calorie_user
+      POSTGRES_PASSWORD: calorie_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  app:
+    build: .
+    image: calorie-counter-app:latest
+    container_name: calorie_counter_app
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/calorie_counter
+      DB_USERNAME: calorie_user
+      DB_PASSWORD: calorie_pass
+      JWT_SECRET: please-change-in-prod
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  db_data:
