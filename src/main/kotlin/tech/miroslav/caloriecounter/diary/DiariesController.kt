@@ -16,7 +16,8 @@ import java.util.*
 @RequestMapping("/api/v1/diaries")
 @Tag(name = "Diaries")
 class DiariesController(
-    private val diaryService: DiaryService
+    private val diaryService: DiaryService,
+    private val diarySummaryService: DiarySummaryService
 ) {
 
     @GetMapping
@@ -47,6 +48,14 @@ class DiariesController(
     fun get(@PathVariable id: UUID): ResponseEntity<DiaryDto> {
         val principal = CurrentUser.principalOrNull() ?: throw UnauthorizedException("Unauthorized")
         val dto = diaryService.get(principal.authUserId, id)
+        return ResponseEntity.ok(dto)
+    }
+
+    @GetMapping("/{id}/summary")
+    @Operation(summary = "Get calculated summary for a diary")
+    fun summary(@PathVariable id: UUID): ResponseEntity<DiarySummaryDto> {
+        val principal = CurrentUser.principalOrNull() ?: throw UnauthorizedException("Unauthorized")
+        val dto = diarySummaryService.summarize(principal.authUserId, id)
         return ResponseEntity.ok(dto)
     }
 
