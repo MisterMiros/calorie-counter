@@ -8,7 +8,7 @@ import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
 
-/** Food entity with minimal fields used by diary entries and summary calculations. */
+/** Food entity persisted in catalog, supports soft delete and measurements. */
 @Entity
 @Table(name = "food")
 class Food(
@@ -17,6 +17,9 @@ class Food(
 
     @Column(name = "owner_id", nullable = false)
     var ownerId: UUID,
+
+    @Column(name = "type", nullable = false)
+    var type: String = "ingredient",
 
     // Optional measurement mappings and density
     @Column(name = "density_g_per_ml")
@@ -27,6 +30,12 @@ class Food(
 
     @Column(name = "item_g")
     var itemG: BigDecimal? = null,
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: OffsetDateTime = OffsetDateTime.now(),
+
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: OffsetDateTime = OffsetDateTime.now(),
 
     @Column(name = "deleted_at")
     var deletedAt: OffsetDateTime? = null
