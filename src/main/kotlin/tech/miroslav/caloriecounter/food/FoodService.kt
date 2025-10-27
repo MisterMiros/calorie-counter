@@ -1,10 +1,12 @@
 ﻿package tech.miroslav.caloriecounter.food
 
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import tech.miroslav.caloriecounter.common.AppConstants
 import tech.miroslav.caloriecounter.common.BadRequestException
 import tech.miroslav.caloriecounter.common.NotFoundException
+import tech.miroslav.caloriecounter.common.PageResponse
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -15,6 +17,7 @@ class FoodService(
     private val foodTranslationRepository: FoodTranslationRepository
 ) {
     private val allowedTypes = setOf("ingredient", "homemade", "restaurant", "product")
+    private val pageSize: Int = 50
 
     @Transactional
     fun create(ownerId: UUID, req: CreateFoodRequest): FoodDto {
@@ -63,6 +66,39 @@ class FoodService(
         val macros = foodMacrosRepository.findById(id).orElseThrow { NotFoundException("Food macros not found") }
         val translations = foodTranslationRepository.findByFoodId(id)
         return toDto(food, macros, translations)
+    }
+
+    @Transactional(readOnly = true)
+    fun listOwned(ownerId: UUID, query: String?, page: Int): PageResponse<FoodDto> {
+        val pageable = PageRequest.of(page.coerceAtLeast(0), pageSize, Sort.by(Sort.Direction.DESC, "updatedAt"))
+        val pg = if (query.isNullOrBlank()) {
+            foodRepository.findByOwnerIdAndDeletedAtIsNull(ownerId, pageable)
+        } else {
+            foodRepository.searchOwned(ownerId, query.trim(), pageable)
+        }
+        return mapFoodPageToDto(pg)
+    }
+
+    @Transactional(readOnly = true)
+    fun listShared(query: String?, page: Int): PageResponse<FoodDto> {
+        // Shared foods are owned by the SHARED auth user (seeded in DB)
+        val sharedOwnerId = tech.miroslav.caloriecounter.common.AppConstants.SHARED_AUTH_USER_ID
+        return listOwned(sharedOwnerId, query, page)
+    }
+
+    private fun mapFoodPageToDto(pg: org.springframework.data.domain.Page<Food>): PageResponse<FoodDto> {
+        val content = pg.content.map { f ->
+            val macros = foodMacrosRepository.findById(f.id).orElseThrow { NotFoundException("Food macros not found") }
+            val translations = foodTranslationRepository.findByFoodId(f.id)
+            toDto(f, macros, translations)
+        }
+        return PageResponse(
+            content = content,
+            page = pg.number,
+            size = pg.size,
+            totalElements = pg.totalElements,
+            totalPages = pg.totalPages
+        )
     }
 
     @Transactional

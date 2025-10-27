@@ -1,10 +1,12 @@
 ﻿package tech.miroslav.caloriecounter.food
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import tech.miroslav.caloriecounter.common.PageResponse
 import tech.miroslav.caloriecounter.common.UnauthorizedException
 import tech.miroslav.caloriecounter.security.CurrentUser
 import java.util.*
@@ -15,6 +17,21 @@ import java.util.*
 class FoodsController(
     private val foodService: FoodService
 ) {
+
+    @GetMapping
+    @Operation(summary = "List user-owned food items (fixed size pagination)")
+    fun list(
+        @RequestParam(required = false)
+        @Parameter(description = "Free-text query on name or producer")
+        query: String?,
+        @RequestParam(defaultValue = "0")
+        @Parameter(description = "0-based page index")
+        page: Int
+    ): ResponseEntity<PageResponse<FoodDto>> {
+        val principal = CurrentUser.principalOrNull() ?: throw UnauthorizedException("Unauthorized")
+        val resp = foodService.listOwned(principal.authUserId, query, page)
+        return ResponseEntity.ok(resp)
+    }
 
     @PostMapping
     @Operation(summary = "Create a user-owned food item")
