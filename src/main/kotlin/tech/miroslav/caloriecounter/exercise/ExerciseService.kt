@@ -75,11 +75,42 @@ class ExerciseService(
 
     @Transactional(readOnly = true)
     fun listOwned(ownerId: UUID, query: String?, page: Int): PageResponse<ExerciseDto> {
+        // Backward-compatible method without filters. Delegates to filtered with empty filters.
+        return listOwned(ownerId, query, emptyList(), emptyList(), emptyList(), page)
+    }
+
+    @Transactional(readOnly = true)
+    fun listOwned(
+        ownerId: UUID,
+        query: String?,
+        tags: List<String>?,
+        muscles: List<String>?,
+        groups: List<String>?,
+        page: Int
+    ): PageResponse<ExerciseDto> {
         val pageable = PageRequest.of(page.coerceAtLeast(0), pageSize, Sort.by(Sort.Direction.DESC, "updatedAt"))
-        val pg = if (query.isNullOrBlank()) {
+        val q = (query ?: "").trim()
+        val hasQuery = q.isNotEmpty()
+        val tagsLower = (tags ?: emptyList()).mapNotNull { it?.trim() }.filter { it.isNotEmpty() }.map { it.lowercase() }
+        val musclesLower = (muscles ?: emptyList()).mapNotNull { it?.trim() }.filter { it.isNotEmpty() }.map { it.lowercase() }
+        val groupsLower = (groups ?: emptyList()).mapNotNull { it?.trim() }.filter { it.isNotEmpty() }.map { it.lowercase() }
+
+        val noFilters = !hasQuery && tagsLower.isEmpty() && musclesLower.isEmpty() && groupsLower.isEmpty()
+        val pg = if (noFilters) {
             exerciseRepository.findByOwnerIdAndDeletedAtIsNull(ownerId, pageable)
         } else {
-            exerciseRepository.searchOwned(ownerId, query.trim(), pageable)
+            exerciseRepository.searchOwnedFiltered(
+                ownerId = ownerId,
+                q = q.ifEmpty { "" },
+                hasQuery = hasQuery,
+                tagsLower = if (tagsLower.isEmpty()) listOf("") else tagsLower,
+                tagsCount = tagsLower.size,
+                musclesLower = if (musclesLower.isEmpty()) listOf("") else musclesLower,
+                musclesCount = musclesLower.size,
+                groupsLower = if (groupsLower.isEmpty()) listOf("") else groupsLower,
+                groupsCount = groupsLower.size,
+                pageable = pageable
+            )
         }
         val content = pg.content.map { e ->
             val translations = exerciseTranslationRepository.findByExerciseId(e.id)
@@ -93,6 +124,16 @@ class ExerciseService(
     @Transactional(readOnly = true)
     fun listShared(query: String?, page: Int): PageResponse<ExerciseDto> =
         listOwned(AppConstants.SHARED_AUTH_USER_ID, query, page)
+
+    @Transactional(readOnly = true)
+    fun listShared(
+        query: String?,
+        tags: List<String>?,
+        muscles: List<String>?,
+        groups: List<String>?,
+        page: Int
+    ): PageResponse<ExerciseDto> =
+        listOwned(AppConstants.SHARED_AUTH_USER_ID, query, tags, muscles, groups, page)
 
     @Transactional
     fun update(ownerId: UUID, id: UUID, req: UpdateExerciseRequest): ExerciseDto {

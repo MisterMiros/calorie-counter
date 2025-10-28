@@ -21,13 +21,22 @@ class SharedExercisesController(
     @Operation(summary = "List shared exercise items (fixed size pagination)")
     fun list(
         @RequestParam(required = false)
-        @Parameter(description = "Free-text query on name")
+        @Parameter(description = "Free-text query on name (FTS)")
         query: String?,
+        @RequestParam(required = false, name = "tag")
+        @Parameter(description = "Filter by tag (repeatable). Matches any tag (OR)")
+        tags: List<String>?,
+        @RequestParam(required = false, name = "muscle")
+        @Parameter(description = "Filter by muscle name (repeatable). Matches any muscle (OR)")
+        muscles: List<String>?,
+        @RequestParam(required = false, name = "group")
+        @Parameter(description = "Filter by muscle group (repeatable). Matches any group (OR)")
+        groups: List<String>?,
         @RequestParam(defaultValue = "0")
         @Parameter(description = "0-based page index")
         page: Int
     ): ResponseEntity<PageResponse<ExerciseDto>> {
-        val resp = exerciseService.listShared(query, page)
+        val resp = exerciseService.listShared(query, tags, muscles, groups, page)
         return ResponseEntity.ok(resp)
     }
 
