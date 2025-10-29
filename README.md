@@ -1,74 +1,134 @@
-﻿Calorie Counter API (Kotlin/Spring Boot)
+# Calorie Counter API
 
-Overview
-- REST API for calorie and exercise tracking designed for AI assistants and apps.
-- Tech: Spring Boot (Kotlin), Spring Security + JWT, Spring Data JPA, PostgreSQL, Flyway, Springdoc OpenAPI, Docker.
-- Versioned API: /api/v1
+REST API for managing calorie intake, food diaries, exercises, and user metrics. Built for health-tracking assistants that need a pragmatic Kotlin/Spring Boot backend with JWT authentication and PostgreSQL.
 
-Getting started
-1) Prerequisites
-- Docker + Docker Compose installed
+## Table of Contents
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Run with Docker Compose](#run-with-docker-compose)
+  - [Local Development](#local-development)
+- [Configuration](#configuration)
+- [Usage Overview](#usage-overview)
+  - [Authentication Flow](#authentication-flow)
+  - [Sample Requests](#sample-requests)
+- [Endpoint Highlights](#endpoint-highlights)
+- [API Documentation](#api-documentation)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
-2) Run with Docker Compose
-- docker-compose up --build
-- App: http://localhost:8080
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
-- Health: http://localhost:8080/actuator/health
+## Features
+- Versioned REST API exposed under `/api/v1`.
+- User management with secure JWT-based authentication.
+- Food diary tracking with macros summarization and calorie goal comparisons.
+- Personal and shared catalogs for foods and exercises, with rich filtering.
+- PostgreSQL persistence, Flyway migrations, and seeded shared content.
+- OpenAPI/Swagger UI for interactive exploration.
 
-3) Configuration (env vars)
-- DB_URL (default jdbc:postgresql://db:5432/calorie_counter)
-- DB_USERNAME (default calorie_user)
-- DB_PASSWORD (default calorie_pass)
-- JWT_SECRET (default please-change-in-prod)
+## Tech Stack
+- Kotlin, Spring Boot, Spring Web, Spring Validation.
+- Spring Security with JWT authentication.
+- Spring Data JPA backed by PostgreSQL.
+- Flyway for schema migrations.
+- Springdoc OpenAPI for documentation.
+- Docker + Docker Compose for local orchestration.
 
-Auth flow
-- POST /api/v1/auth/register { username, password, timezone? }
-- POST /api/v1/auth/login { username, password } → { token, authUserId, appUserId, isAdmin }
-- Use the token as Authorization: Bearer <token> for all other endpoints.
+## Quick Start
 
-Key endpoints (selection)
-- Users
-  - GET /api/v1/users/me → profile with BMI and estimated daily intake (Mifflin–St Jeor + activity level)
-  - PUT /api/v1/users/me → partial update
-  - Weight history: GET/POST/DELETE /api/v1/users/me/weights
-- Food diaries
-  - CRUD: /api/v1/diaries and /api/v1/diaries/{id}/entries
-  - Summary: GET /api/v1/diaries/{id}/summary (kcal/macros; percentages vs goal and estimated intake)
-- Exercises (catalog)
-  - User-owned: /api/v1/exercises
-    - GET supports filters: query (FTS), tag= (repeatable), muscle= (repeatable), group= (repeatable). Filters are OR within each key.
-  - Shared (read-only): /api/v1/shared-exercises (same filters)
-  - Admin shared CRUD: /api/v1/admin/shared-exercises
-- Foods (catalog)
-  - User-owned CRUD: /api/v1/foods
-  - Shared read-only: /api/v1/shared-foods
-  - Admin shared CRUD: /api/v1/admin/shared-foods
+### Prerequisites
+- Docker and Docker Compose.
+- (Optional) Java 21+ and Gradle if running without Docker.
 
-Notes on search and filters
-- Exercise search uses PostgreSQL full‑text search (FTS) on translated names (no trigram fuzzy for now).
-- Multi-value OR filters:
-  - tag=strength&tag=cardio matches exercises that have either tag.
-  - muscle=biceps%20brachii&muscle=pectoralis%20major matches exercises affecting either muscle.
-  - group=chest&group=arms matches exercises assigned to either group.
-- Pagination is fixed-size (size=50). Clients can only supply page (0-based).
+### Run with Docker Compose
+```bash
+docker-compose up --build
+```
+- Application: http://localhost:8080  
+- Swagger UI: http://localhost:8080/swagger-ui/index.html  
+- Health check: http://localhost:8080/actuator/health
 
-Units and measurements (foods)
-- Quantities are decimals only.
-- Supported units: g, ml, cup (240 ml), tablespoon (15 ml), teaspoon (5 ml), pack, item.
-- Volumes require density_g_per_ml on food; pack/item require pack_g/item_g respectively.
-- Calories are derived from macros per 100 g.
+### Local Development
+Run against a local PostgreSQL instance (see `docker/postgres` for reference env):
+```bash
+./gradlew bootRun
+```
+Run the automated test suite:
+```bash
+./gradlew test
+```
 
-Security
-- All endpoints except /api/v1/auth/** require JWT.
-- JWT contains auth_user_id and app_user_id; no expiration (for now).
-- Admin-only routes under /api/v1/admin/**.
+## Configuration
+Set environment variables (or Docker Compose overrides) to customize runtime behavior.
 
-Database
-- PostgreSQL with Flyway migrations. SHARED system user is seeded (owner of shared catalog items).
+| Variable | Description | Default |
+| --- | --- | --- |
+| `DB_URL` | JDBC connection string | `jdbc:postgresql://db:5432/calorie_counter` |
+| `DB_USERNAME` | Database username | `calorie_user` |
+| `DB_PASSWORD` | Database password | `calorie_pass` |
+| `JWT_SECRET` | Symmetric key for signing tokens | `please-change-in-prod` |
 
-Development tips
-- Run tests locally with Gradle: ./gradlew test
-- OpenAPI is available at /v3/api-docs and Swagger UI at /swagger-ui.
+## Usage Overview
 
-License
-- MIT (or specify your desired license)
+### Authentication Flow
+1. `POST /api/v1/auth/register` with `username`, `password`, optional `timezone`.
+2. `POST /api/v1/auth/login` with credentials to receive `{ token, authUserId, appUserId, isAdmin }`.
+3. Send `Authorization: Bearer <token>` header on subsequent requests.
+
+### Sample Requests
+Register a user:
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"demo","password":"changeme","timezone":"UTC"}'
+```
+
+Retrieve the current user profile (BMI, estimated intake, preferences):
+```bash
+curl http://localhost:8080/api/v1/users/me \
+  -H "Authorization: Bearer <token>"
+```
+
+Create a food diary entry:
+```bash
+curl -X POST http://localhost:8080/api/v1/diaries/{diaryId}/entries \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"foodId":"...", "portion":{"amount":150,"unit":"g"}}'
+```
+
+## Endpoint Highlights
+- **Users**: manage profile and weight history (`/api/v1/users/me`, `/api/v1/users/me/weights`).
+- **Food Diaries**: CRUD diaries and entries; summaries via `/api/v1/diaries/{id}/summary`.
+- **Exercises**: personal (`/api/v1/exercises`) and shared catalogs (`/api/v1/shared-exercises`) with FTS and multi-value filters.
+- **Foods**: personal (`/api/v1/foods`) and shared catalogs (`/api/v1/shared-foods`); admin CRUD under `/api/v1/admin/**`.
+- Pagination uses fixed size (50 items) with page-based navigation.
+
+## API Documentation
+- OpenAPI spec: `GET /v3/api-docs`
+- Interactive UI: `/swagger-ui/index.html`
+
+## Project Structure
+```
+project-root/
+|- docker/               # Helper files for local infrastructure
+|- docker-compose.yml    # Orchestration for app + PostgreSQL
+|- src/
+|  |- main/kotlin/       # Application source code
+|  `- main/resources/    # Configuration, SQL migrations, etc.
+|- build.gradle          # Gradle build script
+`- HELP.md               # Spring Boot starter help
+```
+
+## Development
+- Execute unit tests: `./gradlew test`.
+- Inspect database migrations: `src/main/resources/db/migration`.
+- Update API docs automatically via Springdoc when modifying controllers.
+
+## Contributing
+Pull requests and feature ideas are welcome. Please open an issue to discuss large changes before submitting a PR.
+
+## License
+Released under the [MIT License](LICENSE).
