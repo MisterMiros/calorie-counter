@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
 
       - name: Upload files to server (as deploy)
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -31,15 +31,6 @@ jobs:
           source: "."
           target: "/srv/caloriecounter/app"
           rm: true
-          exclude: |
-            .git
-            .github
-            node_modules
-            target
-            build
-            dist
-            .env
-            **/*.md
 
       - name: Build & run via SSH (as deploy)
         uses: appleboy/ssh-action@v1.2.0
