@@ -23,7 +23,7 @@ services:
     image: calorie-counter-app:latest
     container_name: calorie_counter_app
     environment:
-      DB_URL: ${POSTGRES_DB:-jdbc:postgresql://db:5432/calorie_counter}
+      DB_URL: ${APP_DB_URL:-jdbc:postgresql://db:5432/calorie_counter}
       DB_USERNAME: ${POSTGRES_USER:-calorie_user}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-calorie_pass}
       JWT_SECRET: ${JWT_SECRET:-please-change-in-prod}
