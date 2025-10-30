@@ -6,7 +6,7 @@ COPY . /workspace
 RUN gradle clean bootJar -x test
 
 # Run stage
-FROM eclipse-temurin:21-jre
+FROM amazoncorretto:24.0.2-alpine3.22
 ENV APP_HOME=/app
 WORKDIR ${APP_HOME}
 COPY --from=build /workspace/build/libs/*.jar app.jar

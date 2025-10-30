@@ -5,11 +5,11 @@ services:
     image: postgres:16
     container_name: calorie_counter_db
     environment:
-      POSTGRES_DB: calorie_counter
-      POSTGRES_USER: calorie_user
-      POSTGRES_PASSWORD: calorie_pass
+      POSTGRES_DB: ${POSTGRES_DB:-calorie_counter}
+      POSTGRES_USER: ${POSTGRES_USER:-calorie_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-calorie_pass}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./docker/init:/docker-entrypoint-initdb.d
@@ -23,12 +23,12 @@ services:
     image: calorie-counter-app:latest
     container_name: calorie_counter_app
     environment:
-      DB_URL: jdbc:postgresql://db:5432/calorie_counter
-      DB_USERNAME: calorie_user
-      DB_PASSWORD: calorie_pass
-      JWT_SECRET: please-change-in-prod
+      DB_URL: ${POSTGRES_DB:-jdbc:postgresql://db:5432/calorie_counter}
+      DB_USERNAME: ${POSTGRES_USER:-calorie_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-calorie_pass}
+      JWT_SECRET: ${JWT_SECRET:-please-change-in-prod}
     ports:
-      - "8080:8080"
+      - "${APP_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
