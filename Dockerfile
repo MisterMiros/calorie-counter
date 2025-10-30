@@ -2,8 +2,8 @@
 FROM gradle:8.10.2-jdk21 AS build
 WORKDIR /workspace
 COPY . /workspace
-# Build the application (skip tests for container build speed; adjust as needed)
-RUN gradle clean bootJar -x test
+# Build the application without running Gradle as a daemon (skip tests for speed; adjust as needed)
+RUN gradle clean bootJar -x test --no-daemon
 
 # Run stage
 FROM amazoncorretto:24.0.2-alpine3.22
