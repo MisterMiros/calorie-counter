@@ -31,15 +31,6 @@ jobs:
           source: "."
           target: "/srv/caloriecounter/app"
           rm: true
-          exclude: |
-            .git
-            .github
-            node_modules
-            target
-            build
-            dist
-            .env
-            **/*.md
 
       - name: Build & run via SSH (as deploy)
         uses: appleboy/ssh-action@v1.2.0
