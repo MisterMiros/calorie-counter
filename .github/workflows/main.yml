@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # App environment variables
+      # App env (stored as GitHub Secrets)
       POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -21,40 +21,74 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Upload files to server (as deploy)
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
-          target: "/srv/caloriecounter/app"
-          rm: true
-
-      - name: Build & run via SSH (as deploy)
+      
+      # 1) STOP old containers before copying new app files
+      - name: Stop running containers (compose down)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # port: 22
+          script_stop: true
+          script: |
+            set -e
+            # If this is the first deploy, the dir may not exist yet
+            if [ -d /srv/caloriecounter/app ]; then
+              cd /srv/caloriecounter/app || exit 0
+              # Stop containers if compose file exists
+              if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
+                # Graceful stop; ignore if not running
+                docker compose down --remove-orphans || true
+              fi
+            fi
+
+      # 2) COPY new version of the application
+      - name: Upload files to server (as deploy, SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key_path: ~/.ssh/deploy_ed25519
+          # port: 22
+          source: "."
+          target: "/srv/caloriecounter/app"
+          rm: true   # replace the directory for a clean slate
+
+      # 3) Write/refresh .env and (re)start the stack
+      - name: Build & run via SSH (compose up)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key_path: ~/.ssh/deploy_ed25519
+          # port: 22
           script_stop: true
           envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET
           script: |
             set -euo pipefail
-            cd /srv/caloriecounter/app
-
-            # Optional: generate or update .env file for compose
-            cat > /srv/caloriecounter/app/.env <<EOF
+            # Ensure base dir exists
+            mkdir -p /srv/caloriecounter
+            # Write env used by compose (compose file should reference env_file: ../.env or similar)
+            cat > /srv/caloriecounter/.env <<EOF
+            APP_DB_URL=jdbc:postgresql://localhost:5432/${POSTGRES_DB}
             POSTGRES_DB=${POSTGRES_DB}
             POSTGRES_USER=${POSTGRES_USER}
             POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             JWT_SECRET=${JWT_SECRET}
             EOF
+            chmod 600 /srv/caloriecounter/.env
 
-            # Ensure compose runs with these variables
+            cd /srv/caloriecounter/app
+
+            # Optional: refresh public images for DB/cache, etc.
             docker compose pull || true
+            # Build local images from your Dockerfile(s)
             docker compose build --pull
+            # Start in background
             docker compose up -d --remove-orphans
+
+            # Optional: reclaim disk
             docker image prune -af || true
+
             docker compose ps
