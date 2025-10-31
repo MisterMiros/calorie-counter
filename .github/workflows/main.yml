@@ -59,12 +59,11 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           # port: 22
           script_stop: true
-          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET
+          envs: POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET
           script: |
             set -euo pipefail
             # Write env used by compose (compose file should reference env_file: ../.env or similar)
             cat > /srv/caloriecounter/app/.env <<EOF
-            POSTGRES_DB=${POSTGRES_DB}
             POSTGRES_USER=${POSTGRES_USER}
             POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             JWT_SECRET=${JWT_SECRET}
