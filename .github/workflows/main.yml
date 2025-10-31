@@ -35,12 +35,8 @@ jobs:
             set -e
             # If this is the first deploy, the dir may not exist yet
             if [ -d /srv/caloriecounter/app ]; then
-              cd /srv/caloriecounter/app || exit 0
-              # Stop containers if compose file exists
-              if [ -f docker-compose.yml ] || [ -f compose.yml ]; then
-                # Graceful stop; ignore if not running
-                docker compose down --remove-orphans || true
-              fi
+              cd /srv/caloriecounter/app
+              docker compose down --remove-orphans
             fi
 
       # 2) COPY new version of the application
